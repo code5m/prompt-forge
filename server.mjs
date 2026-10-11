@@ -4,6 +4,7 @@ import http from "node:http";
 import {serveLocalMedia} from "./local-media.mjs";
 import {readPromptEvidence} from "./prompt-evidence.mjs";
 import {createAssetStore} from "./asset-store.mjs";
+import {visionPayload,visionPrompt} from "./visual-review.mjs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -165,6 +166,31 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
       if (pathname === "/api/assets/state" && req.method === "GET"){
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
         return safeJson(res,200,await store.read());
+      }
+      if (pathname === "/api/assets/import" && req.method === "POST"){
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        const body=await jsonBody(req,2500000);
+        try {return safeJson(res,200,await store.importLegacy(body.records));}
+        catch(e){throw new ApiError(400,String(e.message));}
+      }
+      if (pathname === "/api/assets/visual-review" && req.method === "POST"){
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        if(mock || !apiKey)throw new ApiError(503,"图文联合审核需要真实模型");
+        const body=await jsonBody(req);
+        if(typeof body.id!=="string"||typeof body.prompt!=="string"||!body.prompt.trim())throw new ApiError(400,"缺少图片或提示词");
+        if(active>=1)throw new ApiError(429,"图文审核串行执行，请稍后重试");
+        active++;
+        try{
+          const {image}=await visionPayload(env.PROMPT_FORGE_WORKSPACE_ROOT,body.id,join(ROOT,"media-index.json"));
+          const result=await providerCall(fetchImpl,apiKey,"/chat/completions",{
+            model:env.PROMPT_FORGE_VISION_MODEL||REVIEW_MODEL,max_tokens:1200,
+            messages:[{role:"user",content:[{type:"text",text:visionPrompt(body.prompt)},{type:"image_url",image_url:{url:image}}]}]
+          });
+          const parsed=readModelJson(result?.choices?.[0]?.message?.content);
+          if(typeof parsed.matched!=="boolean"||!Array.isArray(parsed.observations)||!Array.isArray(parsed.issues))throw new ApiError(502,"视觉审核返回数据不完整");
+          const persisted=await store.mutate(body.id,"visual-review",{...parsed,prompt:body.prompt,model:env.PROMPT_FORGE_VISION_MODEL||REVIEW_MODEL});
+          return safeJson(res,200,{review:persisted.visualReviews.at(-1),approvedAutomatically:false});
+        }finally{active--;}
       }
       if (pathname === "/api/assets/update" && req.method === "POST"){
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
