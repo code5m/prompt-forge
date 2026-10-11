@@ -1,6 +1,7 @@
 // Prompt Forge: dependency-free local server and authenticated SenseNova API proxy.
 // Node >=20. Never expose SENSENOVA_API_KEY to browser, logs, or GitHub.
 import http from "node:http";
+import {serveLocalMedia} from "./local-media.mjs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +18,11 @@ const STATIC = new Map([
   ["/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/core.js", ["core.js", "text/javascript; charset=utf-8"]],
   ["/styles.css", ["styles.css", "text/css; charset=utf-8"]],
-  ["/hot_prompts.json", ["hot_prompts.json", "application/json; charset=utf-8"]]
+  ["/hot_prompts.json", ["hot_prompts.json", "application/json; charset=utf-8"]],
+  ["/media-index.json", ["media-index.json", "application/json; charset=utf-8"]],
+  ["/asset.css", ["asset.css", "text/css; charset=utf-8"]],
+  ["/studio.css", ["studio.css", "text/css; charset=utf-8"]],
+  ["/studio.js", ["studio.js", "text/javascript; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
@@ -137,6 +142,10 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
     res.setHeader("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; base-uri 'none'; form-action 'self'");
     const pathname = new URL(req.url || "/", "http://localhost").pathname;
     try {
+      if ((req.method === "GET" || req.method === "HEAD") && pathname === "/api/local-media") {
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
+        return await serveLocalMedia(req,res,{workspaceRoot:env.PROMPT_FORGE_WORKSPACE_ROOT});
+      }
       if (req.method === "GET" && pathname === "/api/status") {
         return safeJson(res, 200, {
           mode: mock ? "mock" : apiKey ? "live" : "unconfigured",
