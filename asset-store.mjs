@@ -59,6 +59,10 @@ export function createAssetStore(statePath){
      asset.visualReviews.push({id:randomUUID(),matched:payload.matched===true,confidence:Number(payload.confidence)||0,observations:payload.observations.slice(0,10).map(name),issues:(payload.issues||[]).slice(0,10).map(name),suggestions:(payload.suggestions||[]).slice(0,10).map(name),prompt:name(payload.prompt),model:name(payload.model),at});
      // AI's opinion is evidence to review, never automatic human approval.
      asset.approval='needs-attention';
+    }else if(action==='translation'){
+     const en=String(payload.en||'').trim(),zh=String(payload.zh||'').trim();
+     if(!en||!zh||en.length>3000||zh.length>3000)throw Error('英文与中文都必须完整填写');
+     (asset.translations??=[]).push({id:randomUUID(),en,zh,source:payload.source==='ai'?'ai':'manual',model:name(payload.model),at});
     }else if(action==='score'){
      const keys=['match','quality','style','composition','detail'],values={};
      for(const k of keys){const v=Number(payload.values?.[k]);if(!Number.isFinite(v)||v<0||v>10)throw Error('评分必须在 0–10 之间');values[k]=v}
