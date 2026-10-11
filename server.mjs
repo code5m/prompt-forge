@@ -3,6 +3,7 @@
 import http from "node:http";
 import {serveLocalMedia} from "./local-media.mjs";
 import {readPromptEvidence} from "./prompt-evidence.mjs";
+import {createAssetStore} from "./asset-store.mjs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +30,9 @@ const STATIC = new Map([
   ["/knowledge.js", ["knowledge.js", "text/javascript; charset=utf-8"]],
   ["/knowledge-core.js", ["knowledge-core.js", "text/javascript; charset=utf-8"]],
   ["/knowledge.css", ["knowledge.css", "text/css; charset=utf-8"]],
-  ["/audit.js", ["audit.js", "text/javascript; charset=utf-8"]]
+  ["/audit.js", ["audit.js", "text/javascript; charset=utf-8"]],
+  ["/asset-center.js", ["asset-center.js", "text/javascript; charset=utf-8"]],
+  ["/asset-center.css", ["asset-center.css", "text/css; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
@@ -136,6 +139,7 @@ async function providerCall(fetchImpl, key, path, payload) {
 }
 
 export function createAppServer({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const store=createAssetStore(join(ROOT,".local","asset-state.json"));
   const mock = env.PROMPT_FORGE_MOCK_AI === "1";
   const accessToken = env.WORKBENCH_ACCESS_TOKEN || "";
   const apiKey = env.SENSENOVA_API_KEY || "";
@@ -152,6 +156,21 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
       if ((req.method === "GET" || req.method === "HEAD") && pathname === "/api/local-media") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
         return await serveLocalMedia(req,res,{workspaceRoot:env.PROMPT_FORGE_WORKSPACE_ROOT});
+      }
+      if (pathname === "/api/assets/catalog" && req.method === "GET") {
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        try {return safeJson(res,200,JSON.parse(await readFile(join(ROOT,".local","organized","catalog.json"),"utf8")));}
+        catch {throw new ApiError(404,"未建立资产目录，请执行 npm run organize");}
+      }
+      if (pathname === "/api/assets/state" && req.method === "GET"){
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        return safeJson(res,200,await store.read());
+      }
+      if (pathname === "/api/assets/update" && req.method === "POST"){
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        const body=await jsonBody(req);
+        try{return safeJson(res,200,await store.mutate(body.id,body.action,body.payload));}
+        catch(error){throw new ApiError(400,String(error.message).slice(0,180));}
       }
       if (req.method === "GET" && pathname === "/api/audit-report") {
         if(accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");

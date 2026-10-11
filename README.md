@@ -47,3 +47,9 @@ PROMPT_FORGE_MOCK_AI=1 npm start
 
 ## 关联审计与本地报告
 执行 `PROMPT_FORGE_WORKSPACE_ROOT=/home/ainfinit/hot-prompts npm run audit`，只读扫描索引的 991 项素材；输出 `.local/audit-report.json`（不进入 Git）。打开“关联核验”查看分类、搜索、跳转到研究页面和导出审核报告。状态说明：candidate 是同目录提示词候选，不表示逐图验证；shared 代表上级目录公共提示词；missing 没有索引关联。人工核对与 AI 视觉审核尚需独立进行。
+
+## 统一资产平台与无损整理
+- `npm run organize`：扫描 2500 条原始提示词与 991 项真实媒体，生成独立的 `.local/organized/catalog.json`，按分类创建 `.local/organized/prompts/<分类>/` 中的独立 Markdown 提示词。不会移动、删除或覆写 `/home/ainfinit/hot-prompts` 下的任何原文件。可删除生成目录后重建。
+- 资产中心：可搜索 3491 项素材，打开原图/视频与出处，编辑标签，保存多个不可覆盖的提示词版本并进行逐字差异比较，保存审核证据与图文关联核验状态。
+- 所有用户新写入的审核、标签及版本信息持久化在 `.local/asset-state.json`；原始数据独立保留。备份时请复制整个 `.local/` 文件夹。
+- 自动审核只覆盖文件路径，不代表实际图文 AI 视觉审核。语义审核和生成实验与当前资产中心可分别使用，但真正的全自动双向联动及多用户权限系统尚不在此次范围。
