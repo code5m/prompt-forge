@@ -28,7 +28,8 @@ const STATIC = new Map([
   ["/research.css", ["research.css", "text/css; charset=utf-8"]],
   ["/knowledge.js", ["knowledge.js", "text/javascript; charset=utf-8"]],
   ["/knowledge-core.js", ["knowledge-core.js", "text/javascript; charset=utf-8"]],
-  ["/knowledge.css", ["knowledge.css", "text/css; charset=utf-8"]]
+  ["/knowledge.css", ["knowledge.css", "text/css; charset=utf-8"]],
+  ["/audit.js", ["audit.js", "text/javascript; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
@@ -151,6 +152,11 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
       if ((req.method === "GET" || req.method === "HEAD") && pathname === "/api/local-media") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
         return await serveLocalMedia(req,res,{workspaceRoot:env.PROMPT_FORGE_WORKSPACE_ROOT});
+      }
+      if (req.method === "GET" && pathname === "/api/audit-report") {
+        if(accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
+        try {return safeJson(res,200,JSON.parse(await readFile(join(ROOT,".local","audit-report.json"),"utf8")));}
+        catch {throw new ApiError(404,"请先在本地运行 npm run audit");}
       }
       if (req.method === "GET" && pathname === "/api/evidence") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");

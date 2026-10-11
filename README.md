@@ -44,3 +44,6 @@ PROMPT_FORGE_MOCK_AI=1 npm start
 ## 素材证据研究
 新的“素材与提示词研究”页面从 991 项索引中选取图片或视频，经过服务器本机路径白名单读取关联的 .md/.txt 文件。目录公共提示词文件不保证单图精确对应；所有导入案例都带有 association=unverified 来源标记，先人工核对原图与文字，再选择保存 V1 并进入 AI 审核、版本对比、日日新 A/B。
 原始素材保持在独立 /home/ainfinit/hot-prompts 下，只读，不提交图片及令牌到 GitHub。推荐从本地启动：将 PROMPT_FORGE_WORKSPACE_ROOT 指向上述目录，在服务器进程环境加载私有 Key 后 npm start。真实图片生成需要用户模型额度；测试样张不能证明大规模批量质量。
+
+## 关联审计与本地报告
+执行 `PROMPT_FORGE_WORKSPACE_ROOT=/home/ainfinit/hot-prompts npm run audit`，只读扫描索引的 991 项素材；输出 `.local/audit-report.json`（不进入 Git）。打开“关联核验”查看分类、搜索、跳转到研究页面和导出审核报告。状态说明：candidate 是同目录提示词候选，不表示逐图验证；shared 代表上级目录公共提示词；missing 没有索引关联。人工核对与 AI 视觉审核尚需独立进行。
