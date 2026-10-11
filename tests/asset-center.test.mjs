@@ -58,3 +58,14 @@ test('scores are bounded, persisted, and maintain history',async()=>{
  assert.equal((await s.get('images/cat.png')).outputs.length,1);
  }finally{await rm(root,{recursive:true,force:true})}
 });
+test('translation preserves original English and caches exact bilingual source',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'pf-bilingual-'));
+ try{const store=createAssetStore(join(root,'state.json'));
+ await store.mutate('prompt-1','translation',{en:'a cat',zh:'一只猫',source:'ai',model:'review-model'});
+ await store.mutate('prompt-1','translation',{en:'an orange cat',zh:'一只橘猫',source:'manual'});
+ const entry=await createAssetStore(join(root,'state.json')).get('prompt-1');
+ assert.equal(entry.translations.length,2);
+ assert.equal(entry.translations[0].en,'a cat');assert.equal(entry.translations[1].zh,'一只橘猫');
+ await assert.rejects(store.mutate('prompt-1','translation',{en:'hello',zh:''}));
+ }finally{await rm(root,{recursive:true,force:true})}
+});
