@@ -25,7 +25,10 @@ const STATIC = new Map([
   ["/studio.css", ["studio.css", "text/css; charset=utf-8"]],
   ["/studio.js", ["studio.js", "text/javascript; charset=utf-8"]],
   ["/research.js", ["research.js", "text/javascript; charset=utf-8"]],
-  ["/research.css", ["research.css", "text/css; charset=utf-8"]]
+  ["/research.css", ["research.css", "text/css; charset=utf-8"]],
+  ["/knowledge.js", ["knowledge.js", "text/javascript; charset=utf-8"]],
+  ["/knowledge-core.js", ["knowledge-core.js", "text/javascript; charset=utf-8"]],
+  ["/knowledge.css", ["knowledge.css", "text/css; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
