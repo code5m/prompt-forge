@@ -59,6 +59,15 @@ export function createAssetStore(statePath){
      asset.visualReviews.push({id:randomUUID(),matched:payload.matched===true,confidence:Number(payload.confidence)||0,observations:payload.observations.slice(0,10).map(name),issues:(payload.issues||[]).slice(0,10).map(name),suggestions:(payload.suggestions||[]).slice(0,10).map(name),prompt:name(payload.prompt),model:name(payload.model),at});
      // AI's opinion is evidence to review, never automatic human approval.
      asset.approval='needs-attention';
+    }else if(action==='score'){
+     const keys=['match','quality','style','composition','detail'],values={};
+     for(const k of keys){const v=Number(payload.values?.[k]);if(!Number.isFinite(v)||v<0||v>10)throw Error('评分必须在 0–10 之间');values[k]=v}
+     const overall=Number((keys.reduce((sum,k)=>sum+values[k],0)/keys.length).toFixed(1));
+     (asset.scores??=[]).push({id:randomUUID(),values,overall,reason:name(payload.reason),prompt:String(payload.prompt||'').slice(0,3000),at});
+    }else if(action==='output'){
+     const path=String(payload.path||'');
+     if(!path.startsWith('images/')||path.includes(String.fromCharCode(92))||path.split('/').includes('..')||!/\.(png|jpe?g|webp|gif|mp4|webm|mov|mkv)$/i.test(path))throw Error('只允许 images/ 内的媒体文件相对路径');
+     (asset.outputs??=[]).push({id:randomUUID(),path,note:name(payload.note),at});
     }else if(action==='tags'){
      asset.tags=[...new Set((Array.isArray(payload.tags)?payload.tags:[]).map(x=>name(x).trim()).filter(Boolean))].slice(0,20);
     }else throw Error('未知动作');
