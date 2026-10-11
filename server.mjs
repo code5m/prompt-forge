@@ -165,6 +165,11 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
         try {return safeJson(res,200,JSON.parse(await readFile(join(ROOT,".local","organized","catalog.json"),"utf8")));}
         catch {throw new ApiError(404,"未建立资产目录，请执行 npm run organize");}
       }
+      if(pathname === "/api/assets/translations" && req.method === "GET"){
+        if(accessToken && req.headers["x-workbench-access"] !== accessToken)throw new ApiError(401,"访问口令错误");
+        try{const translated=JSON.parse(await readFile(join(ROOT,".local","translations.json"),"utf8"));return safeJson(res,200,{schema:1,items:translated.items||{},translated:Object.keys(translated.items||{}).length});}
+        catch{return safeJson(res,200,{schema:1,items:{},translated:0});}
+      }
       if (pathname === "/api/assets/state" && req.method === "GET"){
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
         return safeJson(res,200,await store.read());
