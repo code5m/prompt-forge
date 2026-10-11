@@ -45,7 +45,7 @@ async function jsonBody(req, bytesMax = 60000) {
 
 function readModelJson(text) {
   if (typeof text !== "string") throw new ApiError(502, "审核模型没有返回文本");
-  const stripped = text.trim().replace(/^\\\`\\\`\\\`(?:json)?\s*/i, "").replace(/\s*\\\`\\\`\\\`$/i, "");
+const stripped = text.trim().replace(/^`{3}(?:json)?\s*/i, "").replace(/\s*`{3}$/i, "");
   try { return JSON.parse(stripped); }
   catch {
     const start = stripped.indexOf("{"), end = stripped.lastIndexOf("}");
