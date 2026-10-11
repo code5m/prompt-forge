@@ -123,7 +123,7 @@ export function imageSizeForRatio(ratio) {
 }
 
 export function validBackup(data) {
-  return !!data && Array.isArray(data.records) && data.records.length <= 200 &&
+  return !!data && Array.isArray(data.records) && data.records.length > 0 && data.records.length <= 200 &&
     data.records.every(r => typeof r.id === "string" && typeof r.title === "string" &&
       Array.isArray(r.versions) && r.versions.length >= 1 && r.versions.length <= 100 &&
       r.versions.every(v => typeof v.zh === "string" && typeof v.en === "string" &&
