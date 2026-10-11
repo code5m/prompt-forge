@@ -2,6 +2,7 @@
 // Node >=20. Never expose SENSENOVA_API_KEY to browser, logs, or GitHub.
 import http from "node:http";
 import {serveLocalMedia} from "./local-media.mjs";
+import {readPromptEvidence} from "./prompt-evidence.mjs";
 import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,7 +23,9 @@ const STATIC = new Map([
   ["/media-index.json", ["media-index.json", "application/json; charset=utf-8"]],
   ["/asset.css", ["asset.css", "text/css; charset=utf-8"]],
   ["/studio.css", ["studio.css", "text/css; charset=utf-8"]],
-  ["/studio.js", ["studio.js", "text/javascript; charset=utf-8"]]
+  ["/studio.js", ["studio.js", "text/javascript; charset=utf-8"]],
+  ["/research.js", ["research.js", "text/javascript; charset=utf-8"]],
+  ["/research.css", ["research.css", "text/css; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
@@ -145,6 +148,14 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
       if ((req.method === "GET" || req.method === "HEAD") && pathname === "/api/local-media") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
         return await serveLocalMedia(req,res,{workspaceRoot:env.PROMPT_FORGE_WORKSPACE_ROOT});
+      }
+      if (req.method === "GET" && pathname === "/api/evidence") {
+        if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
+        const assetId = new URL(req.url || "/", "http://localhost").searchParams.get("path");
+        try {
+          const evidence = await readPromptEvidence(env.PROMPT_FORGE_WORKSPACE_ROOT,assetId,join(ROOT,"media-index.json"));
+          return safeJson(res,200,evidence);
+        } catch {throw new ApiError(400,"无法读取本地关联证据，请检查素材路径");}
       }
       if (req.method === "GET" && pathname === "/api/status") {
         return safeJson(res, 200, {
