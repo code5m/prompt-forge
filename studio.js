@@ -47,6 +47,7 @@ click("#pfGenerate",async()=>{const r=rec(),a=r.versions.find(v=>v.id===$("#pfBe
  run={recordId:r.id,a:a.id,b:b.id,model:rs[0].model,ratio:$("#pfRatio").value,language:lang,mock:rs.some(x=>x.mock)};
  show("#pfImageState",run.mock?"模拟图已生成：这不代表实际绘图效果":"日日新已生成 A/B，两张图仅保留当前浏览器会话");
  }catch(e){show("#pfImageState","生成失败或不完整："+e.message+"；未记入完整实验")}finally{$("#pfGenerate").disabled=false}});
+for(const side of ["A","B"]){const img=document.querySelector("#pfImage"+side);if(img){const b=document.createElement("button");b.type="button";b.textContent="保存"+side+"图片到电脑";b.addEventListener("click",()=>{const src=img.querySelector("img")?.src;if(!src||!src.startsWith("data:image/"))return alert("请先生成图片");const a=document.createElement("a");a.href=src;a.download="prompt-forge-"+side+"-"+Date.now()+".png";a.click()});img.after(b);}}
 click("#pfWinnerA",()=>{winner="A";show("#pfImageState","已选 A，请保存评语")});click("#pfWinnerB",()=>{winner="B";show("#pfImageState","已选 B，请保存评语")});
 click("#pfStoreExperiment",()=>{if(!run||!winner)return alert("必须完成 A/B，并选择一张优胜图片");db.experiments.unshift({...run,winner,note:$("#pfNote").value.slice(0,500),at:new Date().toISOString()});db.experiments=db.experiments.slice(0,100);save();experiments()});
 function experiments(){$("#pfExperiments").innerHTML=db.experiments.slice(0,10).map(e=>'<p>'+escapeHtml(e.at)+'：'+(e.mock?"模拟":"真实")+'，赢家 '+escapeHtml(e.winner)+'。'+escapeHtml(e.note)+'</p>').join("")}
@@ -54,3 +55,9 @@ click("#pfExport",()=>{const blob=new Blob([JSON.stringify({...db,schema:1},null
 $("#pfFile").onchange=async e=>{const f=e.target.files[0];if(!f||f.size>1000000)return alert("文件无效或超过 1MB");try{const d=JSON.parse(await f.text());if(!validBackup(d))throw Error("版本备份不完整");if(!confirm("将替换当前版本历史。请先备份，是否继续？"))return;db={records:d.records,experiments:Array.isArray(d.experiments)?d.experiments.slice(0,100):[]};current=db.records[0].id;save();view();experiments()}catch(err){alert("导入失败："+err.message)}};
 fetch("/api/status").then(r=>r.json()).then(s=>show("#pfApiState",s.mode==="mock"?"模拟服务已连接：结果不是真实 AI":s.mode==="live"?"真实日日新连接已配置":"服务运行中，但缺少 SENSENOVA_API_KEY")).catch(()=>show("#pfApiState","静态预览：版本与差异可用。启动 node server.mjs 后可接入 AI"));
 save();view();experiments();
+window.addEventListener('prompt-forge:adopt',event=>{
+ const r=event.detail;
+ if(!r||!Array.isArray(r.versions))return;
+ db.records.unshift(r);current=r.id;save();view();
+ show('#pfTranslation','素材来源已保存到案例；关联状态：尚未人工确认，请校对完整双语提示词。');
+});
