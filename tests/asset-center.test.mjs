@@ -45,3 +45,16 @@ test('visual review never grants automatic human approval',async()=>{
  assert.equal(v.approval,'needs-attention');assert.equal(v.visualReviews.length,1);assert.equal(v.visualReviews[0].matched,true);
  }finally{await rm(root,{recursive:true,force:true})}
 });
+test('scores are bounded, persisted, and maintain history',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'pf-score-'));
+ try{const s=createAssetStore(join(root,'state.json'));
+ const values={match:8,quality:9,style:7,composition:6,detail:10};
+ await s.mutate('images/cat.png','score',{values,reason:'good illustration',prompt:'cat'});
+ assert.equal((await s.get('images/cat.png')).scores[0].overall,8);
+ await assert.rejects(s.mutate('images/cat.png','score',{values:{...values,match:22}}));
+ assert.equal((await createAssetStore(join(root,'state.json')).get('images/cat.png')).scores.length,1);
+ await s.mutate('images/cat.png','output',{path:'images/results/cat.png'});
+ await assert.rejects(s.mutate('images/cat.png','output',{path:'../.env'}));
+ assert.equal((await s.get('images/cat.png')).outputs.length,1);
+ }finally{await rm(root,{recursive:true,force:true})}
+});

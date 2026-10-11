@@ -33,7 +33,9 @@ const STATIC = new Map([
   ["/knowledge.css", ["knowledge.css", "text/css; charset=utf-8"]],
   ["/audit.js", ["audit.js", "text/javascript; charset=utf-8"]],
   ["/asset-center.js", ["asset-center.js", "text/javascript; charset=utf-8"]],
-  ["/asset-center.css", ["asset-center.css", "text/css; charset=utf-8"]]
+  ["/asset-center.css", ["asset-center.css", "text/css; charset=utf-8"]],
+  ["/asset-gallery.js", ["asset-gallery.js", "text/javascript; charset=utf-8"]],
+  ["/asset-gallery.css", ["asset-gallery.css", "text/css; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
