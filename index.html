@@ -6,7 +6,7 @@
     <meta name="description" content="面向图片与视频生成的提示词工作台" />
     <title>Prompt Forge · 图片与视频提示词工作台</title>
     <link rel="stylesheet" href="./styles.css" />
-    <link rel="stylesheet" href="./asset.css" />
+    <link rel="stylesheet" href="./asset.css" /><link rel="stylesheet" href="./studio.css" />
   </head>
   <body>
     <header class="topbar">
@@ -74,10 +74,10 @@
       <section class="asset-section" id="assets">
         <div class="section-heading split"><div><p class="eyebrow">LOCAL ASSET CATALOG</p><h2>本地图片与视频索引</h2><p class="section-copy">这里只记录路径、类型和审核状态，不上传素材本体。AI 可读取 `media-index.json` 定位原文件。</p></div><span id="assetCount">读取中…</span></div>
         <div class="asset-toolbar"><label class="search-box">⌕<input id="assetSearch" placeholder="搜索文件名、目录或提示词关联" /></label><select id="assetKind"><option value="all">全部类型</option><option value="image">图片</option><option value="video">视频</option></select><select id="assetReview"><option value="all">全部审核状态</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="needs-attention">需关注</option><option value="rejected">已拒绝</option></select></div>
-        <div class="asset-list" id="assetList"><div class="empty-state">正在读取本地索引…</div></div>
+        <div class="asset-list" id="assetList"><div class="empty-state">正在读取本地索引…</div></div><div id="assetPreview" class="asset-preview-panel" aria-live="polite">选中一项素材，点击“本地预览”查看原图或视频。仅本地服务模式可用。</div>
       </section>
     </main>
     <footer>Prompt Forge · 基于本地提示词库构建 · 素材仅作提示词灵感使用</footer>
-    <script src="./app.js"></script>
+    <script src="./app.js"></script><script type="module" src="./studio.js"></script>
   </body>
 </html>

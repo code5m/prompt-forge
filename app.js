@@ -44,7 +44,30 @@ function renderAssets() {
   const query = $('#assetSearch').value.toLowerCase().trim(); const kind = $('#assetKind').value; const review = $('#assetReview').value;
   const visible = assetState.records.filter((item) => { const current = assetState.overrides[item.id] || item.review; const haystack = `${item.name} ${item.path} ${item.promptFiles.join(' ')}`.toLowerCase(); return (!query || haystack.includes(query)) && (kind === 'all' || item.kind === kind) && (review === 'all' || current === review); });
   $('#assetCount').textContent = `${visible.length} / ${assetState.records.length} 项`;
-  $('#assetList').innerHTML = visible.length ? visible.slice(0, 100).map((item) => { const current = assetState.overrides[item.id] || item.review; return `<div class="asset-row"><span class="asset-icon">${item.kind === 'video' ? '▷' : '▧'}</span><div class="asset-name" title="${escapeHtml(item.path)}">${escapeHtml(item.name)}<span class="asset-path">${escapeHtml(item.path)}${item.promptFiles.length ? ` · 关联：${escapeHtml(item.promptFiles.join(', '))}` : ''}</span></div><span class="asset-type">${item.kind === 'video' ? '视频' : '图片'} · ${formatBytes(item.bytes)}</span><select class="asset-status" data-asset="${encodeURIComponent(item.id)}"><option value="pending" ${current === 'pending' ? 'selected' : ''}>待审核</option><option value="approved" ${current === 'approved' ? 'selected' : ''}>已通过</option><option value="needs-attention" ${current === 'needs-attention' ? 'selected' : ''}>需关注</option><option value="rejected" ${current === 'rejected' ? 'selected' : ''}>已拒绝</option></select><a class="asset-open" href="../${encodeURI(item.path)}" target="_blank" rel="noreferrer">打开原文件 ↗</a></div>`; }).join('') : '<div class="empty-state">没有匹配的本地素材。</div>';
+  $('#assetList').innerHTML = visible.length ? visible.slice(0, 100).map((item) => { const current = assetState.overrides[item.id] || item.review; return `<div class="asset-row"><span class="asset-icon">${item.kind === 'video' ? '▷' : '▧'}</span><div class="asset-name" title="${escapeHtml(item.path)}">${escapeHtml(item.name)}<span class="asset-path">${escapeHtml(item.path)}${item.promptFiles.length ? ` · 关联：${escapeHtml(item.promptFiles.join(', '))}` : ''}</span></div><span class="asset-type">${item.kind === 'video' ? '视频' : '图片'} · ${formatBytes(item.bytes)}</span><select class="asset-status" data-asset="${encodeURIComponent(item.id)}"><option value="pending" ${current === 'pending' ? 'selected' : ''}>待审核</option><option value="approved" ${current === 'approved' ? 'selected' : ''}>已通过</option><option value="needs-attention" ${current === 'needs-attention' ? 'selected' : ''}>需关注</option><option value="rejected" ${current === 'rejected' ? 'selected' : ''}>已拒绝</option></select><button class="asset-open asset-preview" data-preview="${encodeURIComponent(item.id)}">本地预览 ↗</button></div>`; }).join('') : '<div class="empty-state">没有匹配的本地素材。</div>';
+  document.querySelectorAll('.asset-preview').forEach((button) => button.addEventListener('click', async () => {
+    const id = decodeURIComponent(button.dataset.preview), item = assetState.records.find(x => x.id === id);
+    if (!item) return;
+    const pane = document.querySelector('#assetPreview');
+    if (!pane) return;
+    pane.textContent = '正在尝试读取本地文件...';
+    pane.scrollIntoView({behavior:'smooth', block:'nearest'});
+    try {
+      const headers = {};
+      const access = document.querySelector('#pfAccess')?.value;
+      if (access) headers['x-workbench-access'] = access;
+      const result = await fetch('/api/local-media?path=' + encodeURIComponent(item.path), {headers});
+      if (!result.ok) throw new Error(result.status === 503 ? '尚未配置本地素材目录或本机桥接未启动' : '本机媒体不可用 (' + result.status + ')');
+      const blob = await result.blob(), url = URL.createObjectURL(blob);
+      const media = document.createElement(item.kind === 'video' ? 'video' : 'img');
+      media.src = url; media.alt = item.name;
+      if (item.kind === 'video') { media.controls = true; media.preload='metadata'; }
+      media.style.maxWidth='100%'; media.style.maxHeight='450px';
+      if (pane.dataset.objectUrl) URL.revokeObjectURL(pane.dataset.objectUrl);
+      pane.dataset.objectUrl = url;
+      pane.replaceChildren(media);
+    } catch (error) { pane.textContent = error.message + '。请在拥有本地素材的电脑启动 Node 服务。'; }
+  }));
   document.querySelectorAll('.asset-status').forEach((select) => select.addEventListener('change', () => { assetState.overrides[decodeURIComponent(select.dataset.asset)] = select.value; localStorage.setItem('prompt-forge-asset-reviews', JSON.stringify(assetState.overrides)); renderAssets(); }));
 }
 async function loadAssets() { try { const response = await fetch('./media-index.json'); assetState.records = (await response.json()).records || []; } catch (_) { assetState.records = []; } renderAssets(); }
