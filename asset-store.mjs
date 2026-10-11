@@ -12,10 +12,30 @@ export function createAssetStore(statePath){
  return {
   read,
   get:async id=>validId(id)?(await read()).assets[id]||null:null,
+  importLegacy:async records=>{
+   if(!Array.isArray(records)||records.length>600)throw Error('迁移条目过多');
+   return update(db=>{
+    let imported=0;
+    for(const row of records){
+     const id=row?.id;if(!validId(id))continue;
+     if(!db.assets[id])db.assets[id]={id,versions:[],reviews:[],experiments:[],visualReviews:[],tags:[],association:'unverified',approval:'pending',events:[]};
+     const dest=db.assets[id];
+     for(const v of (Array.isArray(row.versions)?row.versions:[]).slice(0,100)){
+      if(!v||typeof v.id!=='string'||dest.versions.some(x=>x.id===v.id))continue;
+      dest.versions.push({id:v.id,number:dest.versions.length+1,zh:String(v.zh||'').slice(0,3000),en:String(v.en||'').slice(0,3000),source:'legacy',reason:name(v.reason),at:String(v.at||'')});imported++;
+     }
+     for(const e of (Array.isArray(row.experiments)?row.experiments:[]).slice(0,100)){
+      if(!e||!e.id||dest.experiments.some(x=>x.id===e.id))continue;
+      dest.experiments.push({id:e.id,a:name(e.a),b:name(e.b),winner:e.winner,note:name(e.note),model:name(e.model),mock:!!e.mock,at:String(e.at||'')});imported++;
+     }
+    }
+    return {imported};
+   });
+  },
   mutate:async (id,action,payload={})=>{
    if(!validId(id))throw new Error('非法资产 ID');
    return update(db=>{
-    const asset=db.assets[id]||={id,versions:[],reviews:[],tags:[],association:'unverified',approval:'pending',events:[]};
+    const asset=db.assets[id]||={id,versions:[],reviews:[],experiments:[],visualReviews:[],tags:[],association:'unverified',approval:'pending',events:[]};
     const at=new Date().toISOString();
     if(action==='version'){
      const zh=String(payload.zh||'').slice(0,3000),en=String(payload.en||'').slice(0,3000);
@@ -30,6 +50,15 @@ export function createAssetStore(statePath){
      if(!['unverified','verified','rejected'].includes(payload.status))throw Error('无效关联状态');
      if(payload.status==='verified'&&!name(payload.evidence))throw Error('确认关联必须提供证据');
      asset.association=payload.status;asset.events.push({action:'association',status:payload.status,evidence:name(payload.evidence),at});
+    }else if(action==='experiment'){
+     if(!['A','B','tie'].includes(payload.winner)||!payload.a||!payload.b)throw Error('实验资料不完整');
+     if(asset.experiments.some(x=>x.id===payload.id))return structuredClone(asset);
+     asset.experiments.push({id:typeof payload.id==='string'?payload.id:randomUUID(),a:name(payload.a),b:name(payload.b),winner:payload.winner,note:name(payload.note),model:name(payload.model),mock:!!payload.mock,at});
+    }else if(action==='visual-review'){
+     if(typeof payload.observations!=='object'||!Array.isArray(payload.observations))throw Error('缺少视觉证据');
+     asset.visualReviews.push({id:randomUUID(),matched:payload.matched===true,confidence:Number(payload.confidence)||0,observations:payload.observations.slice(0,10).map(name),issues:(payload.issues||[]).slice(0,10).map(name),suggestions:(payload.suggestions||[]).slice(0,10).map(name),prompt:name(payload.prompt),model:name(payload.model),at});
+     // AI's opinion is evidence to review, never automatic human approval.
+     asset.approval='needs-attention';
     }else if(action==='tags'){
      asset.tags=[...new Set((Array.isArray(payload.tags)?payload.tags:[]).map(x=>name(x).trim()).filter(Boolean))].slice(0,20);
     }else throw Error('未知动作');

@@ -17,7 +17,7 @@ for category,items in SOURCE['categories'].items():
   prompt=str(item.get('prompt','')).strip()
   if not prompt: continue
   digest=hashlib.sha256(prompt.encode()).hexdigest()
-  ident=f"prompt-{digest[:16]}"
+  ident=f"prompt-{hashlib.sha256((category+str(i)+digest).encode()).hexdigest()[:20]}"
   file=catdir/f'{i:04d}-{digest[:12]}.md'
   content=f'# {category} · {i:04d}\n\n- 来源：hot_prompts.json\n- SHA256：{digest}\n- 热度：{item.get("heat","")}\n\n## 原始英文提示词\n\n{prompt}\n'
   if not file.exists():file.write_text(content,encoding='utf8')

@@ -26,3 +26,22 @@ test('asset persistence concurrent requests are serialized',async()=>{
  assert.equal((await s.get('x')).versions.length,8);
  }finally{await rm(root,{recursive:true,force:true})}
 });
+test('legacy migration is idempotent and preserves experiment association',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'pf-legacy-'));
+ try{const s=createAssetStore(join(root,'state.json'));
+ const records=[{id:'images/cat.png',versions:[{id:'v1',zh:'一只猫',en:'cat'}],experiments:[{id:'e1',a:'v1',b:'v2',winner:'B',mock:false}]}];
+ assert.equal((await s.importLegacy(records)).imported,2);
+ assert.equal((await s.importLegacy(records)).imported,0);
+ assert.equal((await s.get('images/cat.png')).experiments.length,1);
+ await s.mutate('images/cat.png','visual-review',{matched:true,observations:['橘色毛发'],issues:[],prompt:'cat',model:'vision'});
+ assert.equal((await s.get('images/cat.png')).approval,'needs-attention');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+test('visual review never grants automatic human approval',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'pf-vision-'));
+ try{const store=createAssetStore(join(root,'state.json'));
+ await store.mutate('images/cat.png','visual-review',{matched:true,confidence:95,observations:['橘猫'],issues:[],prompt:'orange cat',model:'sense'});
+ const v=await store.get('images/cat.png');
+ assert.equal(v.approval,'needs-attention');assert.equal(v.visualReviews.length,1);assert.equal(v.visualReviews[0].matched,true);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
