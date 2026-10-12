@@ -35,7 +35,8 @@ const STATIC = new Map([
   ["/asset-center.js", ["asset-center.js", "text/javascript; charset=utf-8"]],
   ["/asset-center.css", ["asset-center.css", "text/css; charset=utf-8"]],
   ["/asset-gallery.js", ["asset-gallery.js", "text/javascript; charset=utf-8"]],
-  ["/asset-gallery.css", ["asset-gallery.css", "text/css; charset=utf-8"]]
+  ["/asset-gallery.css", ["asset-gallery.css", "text/css; charset=utf-8"]],
+  ["/governance.js", ["governance.js", "text/javascript; charset=utf-8"]]
 ]);
 
 export class ApiError extends Error {
@@ -159,6 +160,11 @@ export function createAppServer({ env = process.env, fetchImpl = globalThis.fetc
       if ((req.method === "GET" || req.method === "HEAD") && pathname === "/api/local-media") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401, "访问口令错误");
         return await serveLocalMedia(req,res,{workspaceRoot:env.PROMPT_FORGE_WORKSPACE_ROOT});
+      }
+      if(pathname === "/api/governance" && req.method === "GET"){
+        if(accessToken && req.headers["x-workbench-access"] !== accessToken)throw new ApiError(401,"访问口令错误");
+        try{return safeJson(res,200,JSON.parse(await readFile(join(ROOT,".local","governance","asset-manifest.json"),"utf8")))}
+        catch{throw new ApiError(404,"治理索引尚未生成，请运行 npm run govern")}
       }
       if (pathname === "/api/assets/catalog" && req.method === "GET") {
         if (accessToken && req.headers["x-workbench-access"] !== accessToken) throw new ApiError(401,"访问口令错误");
